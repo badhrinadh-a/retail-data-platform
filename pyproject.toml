@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "retail-data-platform"
+version = "0.1.0"
+description = "Enterprise Retail Data Engineering Platform"
+authors = ["Data Engineering Team <data@example.com>"]
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --cov=src"
+testpaths = [
+    "tests",
+]

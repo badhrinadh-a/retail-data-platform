@@ -1,0 +1,73 @@
+pipeline {
+    agent any
+
+    environment {
+        // Fallbacks for local testing without Jenkins credentials setup
+        DOCKER_CREDS = 'dummy-docker-creds'
+        IMAGE_NAME = 'retail-data-platform:test'
+        MINIO_ACCESS_KEY = 'minioadmin'
+        MINIO_SECRET_KEY = 'minioadmin'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Lint & Format') {
+            steps {
+                sh 'make format'
+                sh 'make lint'
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                sh 'make test'
+            }
+        }
+
+        stage('Build Image') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh "docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} -f docker/Dockerfile.airflow ."
+            }
+        }
+
+        stage('Deploy Local') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh 'docker-compose up -d'
+            }
+        }
+
+        stage('Smoke Tests') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh 'sleep 30'
+                sh 'curl -f http://localhost:8085/health || exit 1'
+                sh 'curl -f http://localhost:9000/minio/health/live || exit 1'
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Pipeline executed successfully.'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}

@@ -1,0 +1,71 @@
+################################################
+web services:
+Airflow:  http://localhost:8085
+MinIO:    http://localhost:9000
+Spark:    http://localhost:8080
+Jenkins:  http://localhost:8082
+################################################
+
+step 1:
+#Install MinIO client first.
+curl -L https://dl.min.io/client/mc/release/linux-amd64/mc \
+  -o $HOME/minio-binaries/mc
+chmod +x $HOME/minio-binaries/mc
+echo 'export PATH=$PATH:$HOME/minio-binaries/' >> ~/.bashrc
+source ~/.bashrc
+run : ./scripts/setup_minio.sh
+
+step 2:
+run: ./scripts/bootstrap.sh
+
+step 3:
+pip install Faker
+source env/bin/activate
+python3 src/kafka/producer.py
+
+################################################
+# Kafka Consumption
+################################################
+docker exec -it retail-data-platform-kafka-1 bash
+kafka-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic orders \
+  --from-beginning \
+  --property print.key=true \
+  --property key.separator=" : "
+
+# command to see list of kafka topics
+kafka-topics --bootstrap-server localhost:9092 --list
+
+
+
+################################################
+To see human readable MinIO buckets data locally
+################################################
+prereq:
+1. download duckdb locally using command: curl https://install.duckdb.org | sh
+2. make sure minio container (retail-data-platform-minio-1) is running
+
+steps:
+mc alias set myminio http://localhost:9000 minioadmin minioadmin
+
+# list buckets and list bronze
+mc ls myminio
+mc ls myminio/bronze
+
+mc ls --recursive myminio/bronze
+mc ls myminio/bronze/events/topic=orders
+
+mkdir -p orders_parquets
+mc cp --recursive myminio/bronze/events/topic=orders ./orders_parquets    [copies all orders parquet files in bronze bucket to orders_parquets directory]
+
+
+
+
+
+
+
+
+
+
+docker logs retail-data-platform-jenkins-1
