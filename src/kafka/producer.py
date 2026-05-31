@@ -1,8 +1,9 @@
 """
 Kafka Producer — Retail Event Generator
 
-Continuously produces synthetic retail events (customers, orders, inventory,
-payments) to Kafka topics. Uses structured logging for production observability.
+Continuously produces synthetic retail events for customers, orders,
+inventory, and payments to Kafka topics.
+Uses structured logging for production observability.
 """
 
 import json

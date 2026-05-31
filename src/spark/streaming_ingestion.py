@@ -7,7 +7,6 @@ logging for production observability.
 """
 
 import os
-import sys
 
 from src.shared.logging_config import get_logger
 from src.shared.spark_session import get_spark_session
@@ -20,7 +19,7 @@ def run_streaming_ingestion():
     spark.sparkContext.setLogLevel("WARN")
 
     KAFKA_BROKER = os.getenv("KAFKA_BROKER_INTERNAL", "kafka:29092")
-    TOPICS = "orders,customers,inventory,payments"
+    TOPICS = ",".join(["orders", "customers", "inventory", "payments"])
 
     logger.info(
         "Starting streaming ingestion",
@@ -38,7 +37,10 @@ def run_streaming_ingestion():
 
     # We cast value to string and add topic metadata
     parsed_df = df.selectExpr(
-        "topic", "CAST(key AS STRING)", "CAST(value AS STRING)", "timestamp"
+        "topic",
+        "CAST(key AS STRING)",
+        "CAST(value AS STRING)",
+        "timestamp",
     )
 
     # Write stream to Delta Bronze layer (MinIO) partitioned by topic
@@ -46,7 +48,9 @@ def run_streaming_ingestion():
         parsed_df.writeStream.format("delta")
         .outputMode("append")
         .partitionBy("topic")
-        .option("checkpointLocation", "s3a://bronze/_checkpoints/kafka_ingestion")
+        .option(
+            "checkpointLocation", "s3a://bronze/_checkpoints/kafka_ingestion"
+        )
         .start("s3a://bronze/events")
     )
 

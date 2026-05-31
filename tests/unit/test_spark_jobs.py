@@ -12,7 +12,7 @@ from datetime import datetime
 
 import pytest
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, current_timestamp, lit
+from pyspark.sql.functions import col
 from pyspark.sql.types import (
     DoubleType,
     LongType,
@@ -22,13 +22,10 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
-from src.spark.batch_aggregate import compute_aggregations
-
 # Import the actual functions under test
 from src.spark.batch_transform import (
     ORDER_SCHEMA,
     deduplicate_orders,
-    parse_bronze_orders,
 )
 
 # =============================================================================
@@ -42,7 +39,9 @@ def spark():
     spark = (
         SparkSession.builder.appName("TestRetailPlatform")
         .master("local[1]")
-        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        .config(
+            "spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension"
+        )
         .config(
             "spark.sql.catalog.spark_catalog",
             "org.apache.spark.sql.delta.catalog.DeltaCatalog",
@@ -166,11 +165,46 @@ def sample_orders_with_duplicates(spark):
 def sample_silver_orders(spark):
     """Sample Silver orders for aggregation testing."""
     data = [
-        ("order-001", "cust-A", 100.0, "COMPLETED", 1700000001, datetime(2024, 1, 1)),
-        ("order-002", "cust-B", 200.0, "COMPLETED", 1700000002, datetime(2024, 1, 1)),
-        ("order-003", "cust-C", 50.0, "PENDING", 1700000003, datetime(2024, 1, 1)),
-        ("order-004", "cust-D", 75.0, "CANCELLED", 1700000004, datetime(2024, 1, 1)),
-        ("order-005", "cust-E", 300.0, "COMPLETED", 1700000005, datetime(2024, 1, 1)),
+        (
+            "order-001",
+            "cust-A",
+            100.0,
+            "COMPLETED",
+            1700000001,
+            datetime(2024, 1, 1),
+        ),
+        (
+            "order-002",
+            "cust-B",
+            200.0,
+            "COMPLETED",
+            1700000002,
+            datetime(2024, 1, 1),
+        ),
+        (
+            "order-003",
+            "cust-C",
+            50.0,
+            "PENDING",
+            1700000003,
+            datetime(2024, 1, 1),
+        ),
+        (
+            "order-004",
+            "cust-D",
+            75.0,
+            "CANCELLED",
+            1700000004,
+            datetime(2024, 1, 1),
+        ),
+        (
+            "order-005",
+            "cust-E",
+            300.0,
+            "COMPLETED",
+            1700000005,
+            datetime(2024, 1, 1),
+        ),
     ]
     schema = StructType(
         [
@@ -236,7 +270,9 @@ class TestDeduplication:
         result = deduplicate_orders(sample_orders_with_duplicates)
         assert result.count() == 2
 
-    def test_dedup_keeps_latest_by_ingested_at(self, sample_orders_with_duplicates):
+    def test_dedup_keeps_latest_by_ingested_at(
+        self, sample_orders_with_duplicates
+    ):
         """Dedup should keep the record with the most recent ingested_at."""
         result = deduplicate_orders(sample_orders_with_duplicates)
         order_001 = result.filter(col("order_id") == "order-001").collect()[0]
@@ -248,7 +284,9 @@ class TestDeduplication:
         result = deduplicate_orders(sample_parsed_orders)
         assert result.count() == sample_parsed_orders.count()
 
-    def test_dedup_removes_row_number_column(self, sample_orders_with_duplicates):
+    def test_dedup_removes_row_number_column(
+        self, sample_orders_with_duplicates
+    ):
         """The internal _row_num column should not leak into the output."""
         result = deduplicate_orders(sample_orders_with_duplicates)
         assert "_row_num" not in result.columns
@@ -260,7 +298,9 @@ class TestDeduplication:
 
 
 class TestGoldAggregation:
-    def test_aggregation_groups_by_status(self, spark, sample_silver_orders, tmp_path):
+    def test_aggregation_groups_by_status(
+        self, spark, sample_silver_orders, tmp_path
+    ):
         """Aggregation should produce one row per unique status."""
         # Write sample data as Delta so compute_aggregations can read it
         silver_path = str(tmp_path / "silver_orders")
@@ -295,7 +335,7 @@ class TestGoldAggregation:
 
     def test_aggregation_revenue_sum(self, spark, sample_silver_orders):
         """Total revenue for COMPLETED orders should be 600.0 (100+200+300)."""
-        from pyspark.sql.functions import count, current_timestamp
+        from pyspark.sql.functions import count
         from pyspark.sql.functions import sum as _sum
 
         result = sample_silver_orders.groupBy("status").agg(
@@ -358,7 +398,14 @@ class TestEdgeCases:
     def test_single_row_dedup(self, spark):
         """Dedup on a single row should return that same row."""
         data = [
-            ("order-X", "cust-X", 99.99, "PENDING", 1700000000, datetime(2024, 1, 1))
+            (
+                "order-X",
+                "cust-X",
+                99.99,
+                "PENDING",
+                1700000000,
+                datetime(2024, 1, 1),
+            )
         ]
         schema = StructType(
             [

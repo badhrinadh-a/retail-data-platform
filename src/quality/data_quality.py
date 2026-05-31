@@ -15,13 +15,13 @@ Quality checks implemented:
     - Referential integrity (cross-table FK checks)
 """
 
-import os
 import sys
+
 from dataclasses import dataclass, field
 from typing import List, Optional
 
 from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql.functions import col, count, isnan, isnull
+from pyspark.sql.functions import col, isnull
 
 from src.shared.logging_config import get_logger
 
@@ -84,7 +84,10 @@ def check_not_empty(
         passed=passed,
         metric_value=float(row_count),
         threshold=float(min_rows),
-        message=f"Table '{table_name}' has {row_count} rows (minimum: {min_rows})",
+        message=(
+            f"Table '{table_name}' has {row_count} rows "
+            f"(minimum: {min_rows})"
+        ),
         severity="ERROR",
     )
 
@@ -104,7 +107,10 @@ def check_no_nulls(
                     passed=False,
                     metric_value=0.0,
                     threshold=0.0,
-                    message=f"Column '{column}' does not exist in '{table_name}'",
+                    message=(
+                        f"Column '{column}' does not exist in "
+                        f"'{table_name}'"
+                    ),
                     severity="ERROR",
                 )
             )
@@ -120,7 +126,10 @@ def check_no_nulls(
                 passed=passed,
                 metric_value=null_pct,
                 threshold=0.0,
-                message=f"Column '{column}' has {null_count} nulls ({null_pct:.2f}%)",
+                message=(
+                    f"Column '{column}' has {null_count} nulls "
+                    f"({null_pct:.2f}%)"
+                ),
                 severity="ERROR",
             )
         )
@@ -168,14 +177,19 @@ def check_value_range(
 
     violation_count = violations.count()
     passed = violation_count == 0
-    range_desc = " and ".join(description_parts) if description_parts else "any"
+    range_desc = (
+        " and ".join(description_parts) if description_parts else "any"
+    )
 
     return QualityCheckResult(
         check_name=f"{table_name}_{column}_in_range",
         passed=passed,
         metric_value=float(violation_count),
         threshold=0.0,
-        message=f"Column '{column}' has {violation_count} values outside range ({range_desc})",
+        message=(
+            f"Column '{column}' has {violation_count} values outside"
+            f" range ({range_desc})"
+        ),
         severity="ERROR",
     )
 
@@ -236,7 +250,11 @@ def check_row_count_consistency(
         passed=passed,
         metric_value=loss_pct,
         threshold=max_loss_pct,
-        message=f"Row loss: {loss_pct:.2f}% (source={source_count}, target={target_count}, max_allowed={max_loss_pct}%)",
+        message=(
+            f"Row loss: {loss_pct:.2f}% "
+            f"(source={source_count}, target={target_count}, "
+            f"max_allowed={max_loss_pct}%)"
+        ),
         severity="ERROR",
     )
 
@@ -254,7 +272,10 @@ def check_allowed_values(
         passed=passed,
         metric_value=float(violation_count),
         threshold=0.0,
-        message=f"Column '{column}' has {violation_count} rows with values outside {allowed_values}",
+        message=(
+            f"Column '{column}' has {violation_count} rows with values "
+            f"outside {allowed_values}"
+        ),
         severity="ERROR",
     )
 
@@ -272,7 +293,8 @@ def validate_silver_orders(spark: SparkSession) -> QualityReport:
         silver_df = spark.read.format("delta").load("s3a://silver/orders")
     except Exception as e:
         logger.error(
-            "Failed to load Silver orders for quality check", extra={"error": str(e)}
+            "Failed to load Silver orders for quality check",
+            extra={"error": str(e)},
         )
         report.results.append(
             QualityCheckResult(
@@ -303,17 +325,23 @@ def validate_silver_orders(spark: SparkSession) -> QualityReport:
     )
 
     # 2. Not empty
-    report.results.append(check_not_empty(silver_df, "silver_orders", min_rows=1))
+    report.results.append(
+        check_not_empty(silver_df, "silver_orders", min_rows=1)
+    )
 
     # 3. No nulls on critical columns
     report.results.extend(
         check_no_nulls(
-            silver_df, "silver_orders", ["order_id", "customer_id", "amount", "status"]
+            silver_df,
+            "silver_orders",
+            ["order_id", "customer_id", "amount", "status"],
         )
     )
 
     # 4. No duplicate order_ids
-    report.results.append(check_no_duplicates(silver_df, "silver_orders", ["order_id"]))
+    report.results.append(
+        check_no_duplicates(silver_df, "silver_orders", ["order_id"])
+    )
 
     # 5. Amount must be positive
     report.results.append(
@@ -323,7 +351,10 @@ def validate_silver_orders(spark: SparkSession) -> QualityReport:
     # 6. Status must be a known value
     report.results.append(
         check_allowed_values(
-            silver_df, "silver_orders", "status", ["PENDING", "COMPLETED", "CANCELLED"]
+            silver_df,
+            "silver_orders",
+            "status",
+            ["PENDING", "COMPLETED", "CANCELLED"],
         )
     )
 
@@ -335,7 +366,9 @@ def validate_gold_sales_summary(spark: SparkSession) -> QualityReport:
     report = QualityReport(layer="gold", table="daily_sales_summary")
 
     try:
-        gold_df = spark.read.format("delta").load("s3a://gold/daily_sales_summary")
+        gold_df = spark.read.format("delta").load(
+            "s3a://gold/daily_sales_summary"
+        )
     except Exception as e:
         logger.error(
             "Failed to load Gold sales summary for quality check",
@@ -356,28 +389,38 @@ def validate_gold_sales_summary(spark: SparkSession) -> QualityReport:
     # 1. Schema check
     report.results.append(
         check_expected_columns(
-            gold_df, "gold_sales_summary", ["status", "total_revenue", "order_count"]
+            gold_df,
+            "gold_sales_summary",
+            ["status", "total_revenue", "order_count"],
         )
     )
 
     # 2. Not empty
-    report.results.append(check_not_empty(gold_df, "gold_sales_summary", min_rows=1))
+    report.results.append(
+        check_not_empty(gold_df, "gold_sales_summary", min_rows=1)
+    )
 
     # 3. No nulls
     report.results.extend(
         check_no_nulls(
-            gold_df, "gold_sales_summary", ["status", "total_revenue", "order_count"]
+            gold_df,
+            "gold_sales_summary",
+            ["status", "total_revenue", "order_count"],
         )
     )
 
     # 4. Revenue must be positive
     report.results.append(
-        check_value_range(gold_df, "gold_sales_summary", "total_revenue", min_value=0.0)
+        check_value_range(
+            gold_df, "gold_sales_summary", "total_revenue", min_value=0.0
+        )
     )
 
     # 5. Order count must be positive
     report.results.append(
-        check_value_range(gold_df, "gold_sales_summary", "order_count", min_value=1.0)
+        check_value_range(
+            gold_df, "gold_sales_summary", "order_count", min_value=1.0
+        )
     )
 
     return report

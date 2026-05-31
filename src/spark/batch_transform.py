@@ -9,9 +9,6 @@ This replaces the previous mode("overwrite") approach which could destroy
 existing data on partial failures.
 """
 
-import logging
-import sys
-
 from delta.tables import DeltaTable
 from pyspark.sql.functions import col, from_json, row_number
 from pyspark.sql.types import DoubleType, LongType, StringType, StructType
@@ -54,14 +51,22 @@ def parse_bronze_orders(spark):
     record_count = parsed_orders.count()
     logger.info(
         "Parsed bronze orders",
-        extra={"record_count": record_count, "layer": "bronze_to_silver"},
+        extra={
+            "record_count": record_count,
+            "layer": "bronze_to_silver",
+        },
     )
     return parsed_orders
 
 
 def deduplicate_orders(parsed_orders):
-    """Deduplicate orders by order_id, keeping the most recently ingested record."""
-    dedup_window = Window.partitionBy("order_id").orderBy(col("ingested_at").desc())
+    """Deduplicate orders by order_id.
+
+    Keeps the most recently ingested record for each order_id.
+    """
+    dedup_window = Window.partitionBy("order_id").orderBy(
+        col("ingested_at").desc()
+    )
 
     clean_orders = (
         parsed_orders.withColumn("_row_num", row_number().over(dedup_window))
@@ -72,7 +77,10 @@ def deduplicate_orders(parsed_orders):
     dedup_count = clean_orders.count()
     logger.info(
         "Deduplicated orders",
-        extra={"dedup_count": dedup_count, "layer": "silver"},
+        extra={
+            "dedup_count": dedup_count,
+            "layer": "silver",
+        },
     )
     return clean_orders
 
@@ -91,17 +99,27 @@ def upsert_to_silver(spark, clean_orders):
 
         (
             silver_table.alias("target")
-            .merge(clean_orders.alias("source"), "target.order_id = source.order_id")
+            .merge(
+                clean_orders.alias("source"),
+                "target.order_id = source.order_id",
+            )
             .whenMatchedUpdateAll()
             .whenNotMatchedInsertAll()
             .execute()
         )
-        logger.info("MERGE upsert completed successfully", extra={"layer": "silver"})
+        logger.info(
+            "MERGE upsert completed successfully",
+            extra={"layer": "silver"},
+        )
     else:
-        logger.info("Silver table does not exist — creating with initial write")
+        logger.info(
+            "Silver table does not exist — creating with initial write"
+        )
         (
             clean_orders.write.format("delta")
-            .mode("overwrite")  # Safe here: first write only, table doesn't exist
+            .mode(
+                "overwrite"
+            )  # Safe here: first write only, table doesn't exist
             .save(SILVER_ORDERS_PATH)
         )
         logger.info("Initial Silver table created", extra={"layer": "silver"})
