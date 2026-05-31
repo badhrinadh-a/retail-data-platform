@@ -18,6 +18,8 @@ pipeline {
 
         stage('Lint & Format') {
             steps {
+                sh 'python3 -m pip install --upgrade pip'
+                sh 'python3 -m pip install black isort flake8'
                 sh 'make format'
                 sh 'make lint'
             }
