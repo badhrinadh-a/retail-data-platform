@@ -7,12 +7,13 @@ payments) to Kafka topics. Uses structured logging for production observability.
 
 import json
 import os
+import random
 import time
 import uuid
-import random
-from typing import Dict, Any
-from faker import Faker
+from typing import Any, Dict
+
 from confluent_kafka import Producer
+from faker import Faker
 
 from src.shared.logging_config import get_logger
 
@@ -24,7 +25,7 @@ TOPICS = {
     "orders": "orders",
     "customers": "customers",
     "inventory": "inventory",
-    "payments": "payments"
+    "payments": "payments",
 }
 
 
@@ -48,7 +49,7 @@ def generate_customer() -> Dict[str, Any]:
         "name": fake.name(),
         "email": fake.email(),
         "address": fake.address(),
-        "created_at": time.time()
+        "created_at": time.time(),
     }
 
 
@@ -58,7 +59,7 @@ def generate_order(customer_id: str) -> Dict[str, Any]:
         "customer_id": customer_id,
         "amount": round(random.uniform(10.0, 500.0), 2),
         "status": random.choice(["PENDING", "COMPLETED", "CANCELLED"]),
-        "created_at": time.time()
+        "created_at": time.time(),
     }
 
 
@@ -68,7 +69,7 @@ def generate_inventory() -> Dict[str, Any]:
         "sku": fake.ean(length=13),
         "quantity": random.randint(0, 100),
         "location": fake.city(),
-        "updated_at": time.time()
+        "updated_at": time.time(),
     }
 
 
@@ -78,13 +79,13 @@ def generate_payment(order_id: str) -> Dict[str, Any]:
         "order_id": order_id,
         "method": random.choice(["CREDIT_CARD", "PAYPAL", "BITCOIN"]),
         "status": random.choice(["SUCCESS", "FAILED"]),
-        "processed_at": time.time()
+        "processed_at": time.time(),
     }
 
 
 def main():
     logger.info("Initializing Kafka producer", extra={"broker": KAFKA_BROKER})
-    producer = Producer({'bootstrap.servers': KAFKA_BROKER})
+    producer = Producer({"bootstrap.servers": KAFKA_BROKER})
 
     message_count = 0
     logger.info("Starting data generation loop")
@@ -97,10 +98,26 @@ def main():
             payment = generate_payment(order["order_id"])
 
             # Produce to topics
-            producer.produce(TOPICS["customers"], json.dumps(customer).encode('utf-8'), callback=delivery_report)
-            producer.produce(TOPICS["orders"], json.dumps(order).encode('utf-8'), callback=delivery_report)
-            producer.produce(TOPICS["inventory"], json.dumps(inventory).encode('utf-8'), callback=delivery_report)
-            producer.produce(TOPICS["payments"], json.dumps(payment).encode('utf-8'), callback=delivery_report)
+            producer.produce(
+                TOPICS["customers"],
+                json.dumps(customer).encode("utf-8"),
+                callback=delivery_report,
+            )
+            producer.produce(
+                TOPICS["orders"],
+                json.dumps(order).encode("utf-8"),
+                callback=delivery_report,
+            )
+            producer.produce(
+                TOPICS["inventory"],
+                json.dumps(inventory).encode("utf-8"),
+                callback=delivery_report,
+            )
+            producer.produce(
+                TOPICS["payments"],
+                json.dumps(payment).encode("utf-8"),
+                callback=delivery_report,
+            )
 
             producer.poll(0)
             message_count += 4

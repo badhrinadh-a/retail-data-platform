@@ -15,12 +15,12 @@ Quality checks implemented:
     - Referential integrity (cross-table FK checks)
 """
 
-import sys
 import os
+import sys
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col, count, isnan, isnull
 
 from src.shared.logging_config import get_logger
@@ -31,6 +31,7 @@ logger = get_logger(__name__)
 @dataclass
 class QualityCheckResult:
     """Result of a single data quality check."""
+
     check_name: str
     passed: bool
     metric_value: float
@@ -42,6 +43,7 @@ class QualityCheckResult:
 @dataclass
 class QualityReport:
     """Aggregated results from all quality checks on a dataset."""
+
     layer: str
     table: str
     results: List[QualityCheckResult] = field(default_factory=list)
@@ -49,9 +51,7 @@ class QualityReport:
     @property
     def passed(self) -> bool:
         """Report passes only if all ERROR-severity checks pass."""
-        return all(
-            r.passed for r in self.results if r.severity == "ERROR"
-        )
+        return all(r.passed for r in self.results if r.severity == "ERROR")
 
     @property
     def summary(self) -> dict:
@@ -72,7 +72,10 @@ class QualityReport:
 # Individual Quality Checks
 # =============================================================================
 
-def check_not_empty(df: DataFrame, table_name: str, min_rows: int = 1) -> QualityCheckResult:
+
+def check_not_empty(
+    df: DataFrame, table_name: str, min_rows: int = 1
+) -> QualityCheckResult:
     """Verify that the DataFrame has at least min_rows records."""
     row_count = df.count()
     passed = row_count >= min_rows
@@ -86,40 +89,48 @@ def check_not_empty(df: DataFrame, table_name: str, min_rows: int = 1) -> Qualit
     )
 
 
-def check_no_nulls(df: DataFrame, table_name: str, columns: List[str]) -> List[QualityCheckResult]:
+def check_no_nulls(
+    df: DataFrame, table_name: str, columns: List[str]
+) -> List[QualityCheckResult]:
     """Verify that specified columns contain no NULL values."""
     results = []
     total_rows = df.count()
 
     for column in columns:
         if column not in df.columns:
-            results.append(QualityCheckResult(
-                check_name=f"{table_name}_{column}_no_nulls",
-                passed=False,
-                metric_value=0.0,
-                threshold=0.0,
-                message=f"Column '{column}' does not exist in '{table_name}'",
-                severity="ERROR",
-            ))
+            results.append(
+                QualityCheckResult(
+                    check_name=f"{table_name}_{column}_no_nulls",
+                    passed=False,
+                    metric_value=0.0,
+                    threshold=0.0,
+                    message=f"Column '{column}' does not exist in '{table_name}'",
+                    severity="ERROR",
+                )
+            )
             continue
 
         null_count = df.filter(isnull(col(column))).count()
         null_pct = (null_count / total_rows * 100) if total_rows > 0 else 0.0
         passed = null_count == 0
 
-        results.append(QualityCheckResult(
-            check_name=f"{table_name}_{column}_no_nulls",
-            passed=passed,
-            metric_value=null_pct,
-            threshold=0.0,
-            message=f"Column '{column}' has {null_count} nulls ({null_pct:.2f}%)",
-            severity="ERROR",
-        ))
+        results.append(
+            QualityCheckResult(
+                check_name=f"{table_name}_{column}_no_nulls",
+                passed=passed,
+                metric_value=null_pct,
+                threshold=0.0,
+                message=f"Column '{column}' has {null_count} nulls ({null_pct:.2f}%)",
+                severity="ERROR",
+            )
+        )
 
     return results
 
 
-def check_no_duplicates(df: DataFrame, table_name: str, key_columns: List[str]) -> QualityCheckResult:
+def check_no_duplicates(
+    df: DataFrame, table_name: str, key_columns: List[str]
+) -> QualityCheckResult:
     """Verify that key columns form a unique key (no duplicate rows)."""
     total_rows = df.count()
     distinct_rows = df.select(*key_columns).distinct().count()
@@ -182,7 +193,11 @@ def check_expected_columns(
         passed=passed,
         metric_value=float(len(missing)),
         threshold=0.0,
-        message=f"Missing columns: {sorted(missing)}" if missing else "All expected columns present",
+        message=(
+            f"Missing columns: {sorted(missing)}"
+            if missing
+            else "All expected columns present"
+        ),
         severity="ERROR",
     )
 
@@ -248,6 +263,7 @@ def check_allowed_values(
 # Composite Quality Suites (used by DAGs)
 # =============================================================================
 
+
 def validate_silver_orders(spark: SparkSession) -> QualityReport:
     """Run all quality checks on the Silver orders table."""
     report = QualityReport(layer="silver", table="orders")
@@ -255,22 +271,35 @@ def validate_silver_orders(spark: SparkSession) -> QualityReport:
     try:
         silver_df = spark.read.format("delta").load("s3a://silver/orders")
     except Exception as e:
-        logger.error("Failed to load Silver orders for quality check", extra={"error": str(e)})
-        report.results.append(QualityCheckResult(
-            check_name="silver_orders_readable",
-            passed=False,
-            metric_value=0.0,
-            threshold=0.0,
-            message=f"Cannot read Silver orders: {e}",
-            severity="ERROR",
-        ))
+        logger.error(
+            "Failed to load Silver orders for quality check", extra={"error": str(e)}
+        )
+        report.results.append(
+            QualityCheckResult(
+                check_name="silver_orders_readable",
+                passed=False,
+                metric_value=0.0,
+                threshold=0.0,
+                message=f"Cannot read Silver orders: {e}",
+                severity="ERROR",
+            )
+        )
         return report
 
     # 1. Schema check
     report.results.append(
-        check_expected_columns(silver_df, "silver_orders", [
-            "order_id", "customer_id", "amount", "status", "created_at", "ingested_at"
-        ])
+        check_expected_columns(
+            silver_df,
+            "silver_orders",
+            [
+                "order_id",
+                "customer_id",
+                "amount",
+                "status",
+                "created_at",
+                "ingested_at",
+            ],
+        )
     )
 
     # 2. Not empty
@@ -278,7 +307,9 @@ def validate_silver_orders(spark: SparkSession) -> QualityReport:
 
     # 3. No nulls on critical columns
     report.results.extend(
-        check_no_nulls(silver_df, "silver_orders", ["order_id", "customer_id", "amount", "status"])
+        check_no_nulls(
+            silver_df, "silver_orders", ["order_id", "customer_id", "amount", "status"]
+        )
     )
 
     # 4. No duplicate order_ids
@@ -291,7 +322,9 @@ def validate_silver_orders(spark: SparkSession) -> QualityReport:
 
     # 6. Status must be a known value
     report.results.append(
-        check_allowed_values(silver_df, "silver_orders", "status", ["PENDING", "COMPLETED", "CANCELLED"])
+        check_allowed_values(
+            silver_df, "silver_orders", "status", ["PENDING", "COMPLETED", "CANCELLED"]
+        )
     )
 
     return report
@@ -304,22 +337,27 @@ def validate_gold_sales_summary(spark: SparkSession) -> QualityReport:
     try:
         gold_df = spark.read.format("delta").load("s3a://gold/daily_sales_summary")
     except Exception as e:
-        logger.error("Failed to load Gold sales summary for quality check", extra={"error": str(e)})
-        report.results.append(QualityCheckResult(
-            check_name="gold_sales_readable",
-            passed=False,
-            metric_value=0.0,
-            threshold=0.0,
-            message=f"Cannot read Gold sales summary: {e}",
-            severity="ERROR",
-        ))
+        logger.error(
+            "Failed to load Gold sales summary for quality check",
+            extra={"error": str(e)},
+        )
+        report.results.append(
+            QualityCheckResult(
+                check_name="gold_sales_readable",
+                passed=False,
+                metric_value=0.0,
+                threshold=0.0,
+                message=f"Cannot read Gold sales summary: {e}",
+                severity="ERROR",
+            )
+        )
         return report
 
     # 1. Schema check
     report.results.append(
-        check_expected_columns(gold_df, "gold_sales_summary", [
-            "status", "total_revenue", "order_count"
-        ])
+        check_expected_columns(
+            gold_df, "gold_sales_summary", ["status", "total_revenue", "order_count"]
+        )
     )
 
     # 2. Not empty
@@ -327,7 +365,9 @@ def validate_gold_sales_summary(spark: SparkSession) -> QualityReport:
 
     # 3. No nulls
     report.results.extend(
-        check_no_nulls(gold_df, "gold_sales_summary", ["status", "total_revenue", "order_count"])
+        check_no_nulls(
+            gold_df, "gold_sales_summary", ["status", "total_revenue", "order_count"]
+        )
     )
 
     # 4. Revenue must be positive
@@ -391,6 +431,7 @@ def run_all_quality_checks(spark: SparkSession) -> bool:
 
 if __name__ == "__main__":
     from src.shared.spark_session import get_spark_session
+
     spark = get_spark_session("DataQualityChecks")
     spark.sparkContext.setLogLevel("WARN")
 

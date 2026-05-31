@@ -9,8 +9,8 @@ logging for production observability.
 import os
 import sys
 
-from src.shared.spark_session import get_spark_session
 from src.shared.logging_config import get_logger
+from src.shared.spark_session import get_spark_session
 
 logger = get_logger(__name__)
 
@@ -28,23 +28,27 @@ def run_streaming_ingestion():
     )
 
     # Read from Kafka
-    df = spark.readStream \
-        .format("kafka") \
-        .option("kafka.bootstrap.servers", KAFKA_BROKER) \
-        .option("subscribe", TOPICS) \
-        .option("startingOffsets", "earliest") \
+    df = (
+        spark.readStream.format("kafka")
+        .option("kafka.bootstrap.servers", KAFKA_BROKER)
+        .option("subscribe", TOPICS)
+        .option("startingOffsets", "earliest")
         .load()
+    )
 
     # We cast value to string and add topic metadata
-    parsed_df = df.selectExpr("topic", "CAST(key AS STRING)", "CAST(value AS STRING)", "timestamp")
+    parsed_df = df.selectExpr(
+        "topic", "CAST(key AS STRING)", "CAST(value AS STRING)", "timestamp"
+    )
 
     # Write stream to Delta Bronze layer (MinIO) partitioned by topic
-    query = parsed_df.writeStream \
-        .format("delta") \
-        .outputMode("append") \
-        .partitionBy("topic") \
-        .option("checkpointLocation", "s3a://bronze/_checkpoints/kafka_ingestion") \
+    query = (
+        parsed_df.writeStream.format("delta")
+        .outputMode("append")
+        .partitionBy("topic")
+        .option("checkpointLocation", "s3a://bronze/_checkpoints/kafka_ingestion")
         .start("s3a://bronze/events")
+    )
 
     logger.info("Streaming query started, awaiting termination")
     query.awaitTermination()

@@ -9,13 +9,15 @@ This replaces the previous mode("overwrite") approach which could destroy
 existing aggregation data on partial failures.
 """
 
-import sys
 import logging
-from pyspark.sql.functions import sum as _sum, count, col, current_timestamp
-from delta.tables import DeltaTable
+import sys
 
-from src.shared.spark_session import get_spark_session
+from delta.tables import DeltaTable
+from pyspark.sql.functions import col, count, current_timestamp
+from pyspark.sql.functions import sum as _sum
+
 from src.shared.logging_config import get_logger
+from src.shared.spark_session import get_spark_session
 
 logger = get_logger(__name__)
 
@@ -58,10 +60,7 @@ def upsert_to_gold(spark, gold_agg):
 
         (
             gold_table.alias("target")
-            .merge(
-                gold_agg.alias("source"),
-                "target.status = source.status"
-            )
+            .merge(gold_agg.alias("source"), "target.status = source.status")
             .whenMatchedUpdateAll()
             .whenNotMatchedInsertAll()
             .execute()
@@ -70,8 +69,7 @@ def upsert_to_gold(spark, gold_agg):
     else:
         logger.info("Gold table does not exist — creating with initial write")
         (
-            gold_agg.write
-            .format("delta")
+            gold_agg.write.format("delta")
             .mode("overwrite")  # Safe here: first write only, table doesn't exist
             .save(GOLD_SALES_SUMMARY_PATH)
         )
