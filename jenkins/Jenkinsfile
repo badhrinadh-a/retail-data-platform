@@ -15,13 +15,17 @@ pipeline {
                 checkout scm
             }
         }
-
+        
         stage('Lint & Format') {
             steps {
-                sh 'python3 -m pip install --upgrade pip'
-                sh 'python3 -m pip install black isort flake8'
-                sh 'make format'
-                sh 'make lint'
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    python -m pip install --upgrade pip
+                    python -m pip install black isort flake8
+                    make format
+                    make lint
+                '''
             }
         }
 
