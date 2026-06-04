@@ -1,4 +1,4 @@
-.PHONY: help up down restart logs build install-dev format format-check lint test check ci clean
+.PHONY: help up down restart logs build install-dev ci-deps format format-check lint test check ci clean
 
 VENV := .venv
 VENV_PYTHON := $(VENV)/bin/python
@@ -20,6 +20,7 @@ help:
 	@echo "  logs          : Follow logs for all services"
 	@echo "  build         : Build custom Docker images"
 	@echo "  install-dev   : Create .venv, install deps, enable pre-commit hooks"
+	@echo "  ci-deps       : Install requirements-ci.txt (Jenkins lint/test)"
 	@echo "  format        : Run black and isort (modifies files)"
 	@echo "  format-check  : Verify black/isort without modifying files"
 	@echo "  lint          : Run flake8"
@@ -52,6 +53,9 @@ install-dev:
 	$(VENV_PIP) install -r requirements-dev.txt
 	$(VENV)/bin/pre-commit install
 	@echo "Dev environment ready. Activate with: source $(VENV)/bin/activate"
+
+ci-deps:
+	python3 -m pip install --break-system-packages -r requirements-ci.txt
 
 format:
 	$(PYTHON) -m black $(SRC_DIRS)

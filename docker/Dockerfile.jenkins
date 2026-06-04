@@ -19,10 +19,9 @@ RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-24.
     && mv /tmp/docker/docker /usr/local/bin/ \
     && rm -rf /tmp/docker
 
-# Bake Python dependencies at image build time (CI must not discover deps at test time)
-COPY requirements.txt /opt/jenkins-requirements.txt
-RUN python3 -m pip install --no-cache-dir --upgrade pip \
-    && python3 -m pip install --no-cache-dir -r /opt/jenkins-requirements.txt
+# Bake CI Python deps at image build time (no Airflow — faster, reliable Jenkins builds)
+COPY requirements-ci.txt /opt/jenkins-requirements-ci.txt
+RUN python3 -m pip install --no-cache-dir --break-system-packages -r /opt/jenkins-requirements-ci.txt
 
 # Add jenkins to docker group
 RUN groupadd -f docker && usermod -aG docker jenkins

@@ -16,6 +16,12 @@ pipeline {
             }
         }
 
+        stage('Prepare Python') {
+            steps {
+                sh 'make ci-deps'
+            }
+        }
+
         stage('Lint & Format') {
             steps {
                 sh 'make format-check lint'

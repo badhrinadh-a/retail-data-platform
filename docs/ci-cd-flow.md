@@ -13,18 +13,19 @@ CI is a **final verification**, not a discovery mechanism.
 ## Pipeline stages
 
 1. **Checkout**: Pull from version control.
-2. **Lint & Format**: `make format-check lint` (read-only; dependencies pre-installed in Jenkins image).
-3. **Unit Tests**: `make test` (pytest; no workspace venv or apt-get in pipeline).
-4. **Build Image**: Only on `main`. Rebuilds the Airflow image.
-5. **Deploy Local**: Only on `main`. Restarts docker-compose stack.
-6. **Smoke Tests**: Verifies core services are alive post-deployment.
+2. **Prepare Python**: `pip install -r requirements-ci.txt` (lint/test tools; also baked into the Jenkins image).
+3. **Lint & Format**: `make format-check lint` (read-only).
+4. **Unit Tests**: `make test` (pytest; uses system Python, not a workspace venv).
+5. **Build Image**: Only on `main`. Rebuilds the Airflow image.
+6. **Deploy Local**: Only on `main`. Restarts docker-compose stack.
+7. **Smoke Tests**: Verifies core services are alive post-deployment.
 
 ## Jenkins image
 
 `docker/Dockerfile.jenkins` installs:
 
 - `libpq-dev` and `gcc` for native Python extensions
-- All packages from `requirements.txt` at **image build** time
+- All packages from `requirements-ci.txt` at **image build** time (no Airflow)
 
 Rebuild Jenkins after dependency changes:
 
