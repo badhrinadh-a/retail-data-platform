@@ -22,6 +22,15 @@ This monorepo contains everything needed to spin up a fully functioning data inf
 - `scripts/` - Shell helpers for initializing the environment
 - `docs/` - Extensive documentation
 
+## Development workflow
+
+```bash
+make install-dev          # once: .venv + pre-commit hooks
+make format && make lint && make test   # before push
+```
+
+Pre-commit hooks run **black**, **isort**, and **flake8** on every commit. See [docs/local-setup.md](docs/local-setup.md).
+
 ## Getting Started
 
 Check out [docs/local-setup.md](docs/local-setup.md) for full instructions.

@@ -17,11 +17,19 @@ build/
 *.egg
 .eggs/
 
-# --- Virtual Environment ---
+# --- Virtual Environment (never commit; use .venv via make install-dev) ---
 venv/
 .venv/
 env/
+ENV/
+*.venv/
 
+# --- Test / tooling caches ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 # --- IDE ---
 .idea/
 .vscode/

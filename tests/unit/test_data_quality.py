@@ -7,13 +7,7 @@ against controlled DataFrames with known data, including edge cases.
 
 import pytest
 from pyspark.sql import SparkSession
-from pyspark.sql.types import (
-    DoubleType,
-    LongType,
-    StringType,
-    StructField,
-    StructType,
-)
+from pyspark.sql.types import DoubleType, LongType, StringType, StructField, StructType
 
 from src.quality.data_quality import (
     QualityCheckResult,
@@ -149,9 +143,7 @@ class TestCheckNotEmpty:
 
 class TestCheckNoNulls:
     def test_clean_data_passes(self, orders_df):
-        results = check_no_nulls(
-            orders_df, "orders", ["order_id", "customer_id"]
-        )
+        results = check_no_nulls(orders_df, "orders", ["order_id", "customer_id"])
         assert all(r.passed for r in results)
 
     def test_nulls_detected(self, orders_with_nulls):
@@ -192,9 +184,7 @@ class TestCheckNoDuplicates:
         assert result.metric_value == 0.0
 
     def test_duplicates_detected(self, orders_with_duplicates):
-        result = check_no_duplicates(
-            orders_with_duplicates, "orders", ["order_id"]
-        )
+        result = check_no_duplicates(orders_with_duplicates, "orders", ["order_id"])
         assert result.passed is False
         assert result.metric_value == 1.0  # 3 rows - 2 distinct = 1 dup
 
@@ -206,9 +196,7 @@ class TestCheckNoDuplicates:
 
 class TestCheckValueRange:
     def test_values_in_range_passes(self, orders_df):
-        result = check_value_range(
-            orders_df, "orders", "amount", min_value=0.0
-        )
+        result = check_value_range(orders_df, "orders", "amount", min_value=0.0)
         assert result.passed is True
 
     def test_negative_values_fail(self, spark):
@@ -280,9 +268,7 @@ class TestCheckAllowedValues:
 
 class TestCheckRowCountConsistency:
     def test_same_count_passes(self, orders_df):
-        result = check_row_count_consistency(
-            orders_df, orders_df, "source", "target"
-        )
+        result = check_row_count_consistency(orders_df, orders_df, "source", "target")
         assert result.passed is True
         assert result.metric_value == 0.0
 
@@ -303,9 +289,7 @@ class TestCheckRowCountConsistency:
         assert result.passed is False
 
     def test_empty_source_is_warning(self, spark, empty_df, orders_df):
-        result = check_row_count_consistency(
-            empty_df, orders_df, "source", "target"
-        )
+        result = check_row_count_consistency(empty_df, orders_df, "source", "target")
         assert result.passed is True
         assert result.severity == "WARN"
 

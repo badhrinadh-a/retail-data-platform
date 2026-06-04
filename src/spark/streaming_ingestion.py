@@ -48,9 +48,7 @@ def run_streaming_ingestion():
         parsed_df.writeStream.format("delta")
         .outputMode("append")
         .partitionBy("topic")
-        .option(
-            "checkpointLocation", "s3a://bronze/_checkpoints/kafka_ingestion"
-        )
+        .option("checkpointLocation", "s3a://bronze/_checkpoints/kafka_ingestion")
         .start("s3a://bronze/events")
     )
 

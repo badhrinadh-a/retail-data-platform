@@ -64,9 +64,7 @@ def deduplicate_orders(parsed_orders):
 
     Keeps the most recently ingested record for each order_id.
     """
-    dedup_window = Window.partitionBy("order_id").orderBy(
-        col("ingested_at").desc()
-    )
+    dedup_window = Window.partitionBy("order_id").orderBy(col("ingested_at").desc())
 
     clean_orders = (
         parsed_orders.withColumn("_row_num", row_number().over(dedup_window))
@@ -112,14 +110,10 @@ def upsert_to_silver(spark, clean_orders):
             extra={"layer": "silver"},
         )
     else:
-        logger.info(
-            "Silver table does not exist — creating with initial write"
-        )
+        logger.info("Silver table does not exist — creating with initial write")
         (
             clean_orders.write.format("delta")
-            .mode(
-                "overwrite"
-            )  # Safe here: first write only, table doesn't exist
+            .mode("overwrite")  # Safe here: first write only, table doesn't exist
             .save(SILVER_ORDERS_PATH)
         )
         logger.info("Initial Silver table created", extra={"layer": "silver"})

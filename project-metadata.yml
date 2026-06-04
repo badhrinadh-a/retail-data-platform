@@ -1,16 +1,23 @@
 project_name: Retail Data Platform
 summary: |
   A locally deployable retail-focused data engineering platform built with Docker Compose.
-  It simulates an enterprise data pipeline using Kafka for streaming, Spark for batch/stream compute,
-  Airflow for orchestration, MinIO as object storage, PostgreSQL for metadata, and Jenkins for CI/CD.
+  It simulates an enterprise data pipeline using Kafka for streaming, Spark and Delta Lake
+  for batch/stream compute, Airflow for orchestration, MinIO as object storage,
+  PostgreSQL for metadata, and Jenkins for CI/CD. Implements a medallion architecture
+  (bronze/silver/gold) with data quality validation and unit tests.
 tech_stack:
   - Apache Spark 3.4.1
+  - Delta Lake 2.4.0
   - Apache Kafka 7.4.0
   - Apache Airflow 2.7.1
   - MinIO
   - PostgreSQL 13
   - Jenkins LTS
-  - Python 3
+  - Python 3.9+
+  - confluent-kafka 2.2.0
+  - boto3
+  - pytest / pytest-cov
+  - black / isort / flake8
   - Docker Compose
 services:
   - name: postgres
@@ -18,6 +25,7 @@ services:
     image: postgres:13
     ports: [5432]
     volumes: [postgres_data:/var/lib/postgresql/data]
+    env_file: [.env]
     notes: |
       Stores Airflow metadata, task state, DAG runs, and connection config.
       Healthchecked with pg_isready.
@@ -26,15 +34,17 @@ services:
     image: minio/minio:RELEASE.2023-09-07T02-05-02Z
     ports: [9000, 9001]
     volumes: [minio_data:/data]
+    env_file: [.env]
     notes: |
-      Provides storage for bronze/silver/gold datasets and other artifacts.
-      Exposes web console on 9001.
+      Provides storage for bronze/silver/gold Delta Lake datasets and other artifacts.
+      Exposes web console on 9001. Healthchecked via /minio/health/live.
   - name: minio-setup
     role: bucket initialization helper
     image: minio/mc
+    env_file: [.env]
     notes: |
       Waits for MinIO to start and creates bronze, silver, and gold buckets.
-      It is a one-shot helper container.
+      One-shot helper container; can also be run via ./scripts/setup_minio.sh.
   - name: zookeeper
     role: Kafka cluster coordination
     image: confluentinc/cp-zookeeper:7.4.0
@@ -47,12 +57,14 @@ services:
     ports: [9092, 29092]
     depends_on: [zookeeper]
     notes: |
-      Hosts Kafka topics used by the retail data pipeline. Advertises localhost on 9092 and internal compose network on 29092.
+      Hosts Kafka topics (orders, customers, inventory, payments) used by the retail data pipeline.
+      Advertises localhost on 9092 and internal compose network on 29092.
   - name: spark-master
     role: Spark cluster master node
     image: apache/spark:3.4.1
     ports: [8080, 7077]
     volumes: [./src:/opt/spark/src, ./data:/opt/spark/data]
+    env_file: [.env]
     notes: |
       Manages Spark worker registration and job scheduling.
       Exposes Spark UI on 8080 and master RPC on 7077.
@@ -62,6 +74,7 @@ services:
     ports: [8081]
     depends_on: [spark-master]
     volumes: [./src:/opt/spark/src, ./data:/opt/spark/data]
+    env_file: [.env]
     notes: |
       Executes Spark tasks and reports to spark-master.
       Configured with 2G memory and 2 cores.
@@ -69,69 +82,117 @@ services:
     role: Airflow initialization & database upgrade
     build: docker/Dockerfile.airflow
     command: version
+    env_file: [.env]
     notes: |
-      Runs once to initialize Airflow DB, upgrade schema, and create the default admin user.
+      Runs once to initialize Airflow DB, upgrade schema, and create the default admin user
+      via _AIRFLOW_DB_UPGRADE and _AIRFLOW_WWW_USER_CREATE env vars.
       Uses the same custom Airflow image as webserver and scheduler.
   - name: airflow-webserver
     role: Airflow web UI and API
     build: docker/Dockerfile.airflow
     ports: [8085]
     depends_on: [postgres, airflow-init]
+    env_file: [.env]
+    volumes: [./airflow/dags, ./airflow/plugins, ./src, ./configs]
     notes: |
       Provides the Airflow UI and exposes it on host port 8085.
-      Uses LocalExecutor and connects to PostgreSQL and MinIO.
+      Uses LocalExecutor, connects to PostgreSQL and MinIO, and healthchecks /health.
   - name: airflow-scheduler
     role: Airflow DAG scheduler and task launcher
     build: docker/Dockerfile.airflow
     depends_on: [postgres, airflow-init]
+    env_file: [.env]
+    volumes: [./airflow/dags, ./airflow/plugins, ./src, ./configs]
     notes: |
-      Continuously schedules DAG runs and triggers task execution.
+      Continuously schedules DAG runs and triggers task execution via spark-submit.
   - name: jenkins
     role: CI/CD automation server
     build: docker/Dockerfile.jenkins
     ports: [8082, 50000]
+    user: root
     volumes: [jenkins_home:/var/jenkins_home, /var/run/docker.sock:/var/run/docker.sock]
     notes: |
       Provides Jenkins automation for pipeline jobs and can manage Docker builds inside the host Docker daemon.
-      Runs as user jenkins with Docker CLI installed.
+      Runs as root to access the Docker socket. Pipeline runs unit tests, builds the Airflow image on main, and deploys via docker-compose.
 directories:
   airflow:
-    description: Airflow DAGs and plugin definitions
+    description: Airflow DAGs (streaming_ingestion, batch_jobs) and plugin definitions
   src:
-    description: Core Python application code, Kafka producers, Spark jobs, shared utilities, and SQL assets
+    description: Core Python application code organized by domain
+    subdirs:
+      kafka: Synthetic retail event producer (orders, customers, inventory, payments)
+      spark: Streaming ingestion and batch transform/aggregate PySpark jobs
+      quality: Data quality validation logic for silver and gold layers
+      shared: Spark session factory and structured logging utilities
+  tests:
+    description: Unit tests for producer, Spark jobs, and data quality (pytest with coverage)
   docker:
     description: Custom Docker image definitions for Airflow and Jenkins
   docs:
-    description: Architecture, setup, and workflow documentation
+    description: Architecture, setup, data flow, CI/CD, and branching documentation
   scripts:
-    description: CLI helpers for environment bootstrapping and service initialization
+    description: CLI helpers for MinIO bucket setup and Kafka topic bootstrap
   jenkins:
-    description: Jenkins pipeline configurations and CI/CD assets
+    description: Jenkins pipeline configuration (Jenkinsfile)
+  configs:
+    description: Configuration files mounted into Airflow containers
+  data:
+    description: Local data volume shared with Spark master and worker
+  samples:
+    description: Placeholder for sample datasets
+dags:
+  - name: streaming_ingestion
+    file: airflow/dags/ingestion_dag.py
+    description: Submits Spark streaming job to ingest Kafka events into bronze Delta tables
+  - name: batch_jobs
+    file: airflow/dags/batch_jobs_dag.py
+    description: Orchestrates bronze→silver transform, silver→gold aggregation, and data quality checks
 build:
   airflow_image: docker/Dockerfile.airflow
   jenkins_image: docker/Dockerfile.jenkins
   notes: |
-    The Airflow image is based on apache/airflow:2.7.1 and installs Python requirements from requirements.txt.
+    The Airflow image is based on apache/airflow:2.7.1, installs OpenJDK 11 for Spark,
+    and installs Python requirements from requirements.txt.
     The Jenkins image is based on jenkins/jenkins:lts and adds Python, make, curl, and Docker CLI.
 startup:
   recommended: |
+    cp .env.example .env   # fill in secrets before first run
     make build
     make up
     ./scripts/setup_minio.sh
     ./scripts/bootstrap.sh
     python src/kafka/producer.py
   docs: docs/local-setup.md
+development:
+  makefile_targets:
+    - up
+    - down
+    - restart
+    - logs
+    - build
+    - format
+    - lint
+    - test
+    - clean
 key_files:
   - README.md
+  - Makefile
   - docker-compose.yml
   - project-metadata.yml
+  - .env.example
   - docker/Dockerfile.airflow
   - docker/Dockerfile.jenkins
   - requirements.txt
   - pyproject.toml
+  - jenkins/Jenkinsfile
   - airflow/dags
   - src/kafka
+  - src/spark
+  - src/quality
+  - tests/
 notes: |
   The compose stack is intended for local development and simulates a retail data lake architecture.
-  Airflow orchestrates jobs that likely read from Kafka, write data to MinIO, and process with Spark.
-  Jenkins provides a separate CI/CD control plane for automation and deployment testing.
+  Kafka topics (orders, customers, inventory, payments) feed a streaming job that lands bronze Delta
+  tables in MinIO. Airflow orchestrates batch pipelines that transform bronze→silver→gold with
+  embedded data quality validation. Jenkins provides CI/CD via unit tests, image build, and deploy.
+  All services read configuration from .env (see .env.example for required variables).

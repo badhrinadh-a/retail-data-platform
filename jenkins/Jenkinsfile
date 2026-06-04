@@ -15,30 +15,16 @@ pipeline {
                 checkout scm
             }
         }
-        
-        // stage('Lint & Format') {
-        //     steps {
-        //         sh '''
-        //             python3 -m venv venv
-        //             . venv/bin/activate
-        //             python -m pip install --upgrade pip
-        //             python -m pip install black isort flake8
-        //             make format
-        //             make lint
-        //         '''
-        //     }
-        // }
+
+        stage('Lint & Format') {
+            steps {
+                sh 'make format-check lint'
+            }
+        }
 
         stage('Unit Tests') {
             steps {
-                sh '''
-                    apt-get update && apt-get install -y libpq-dev
-                    python3 -m venv venv
-                    . venv/bin/activate
-                    python -m pip install --upgrade pip
-                    python -m pip install -r requirements.txt
-                    make test
-                '''
+                sh 'make test'
             }
         }
 

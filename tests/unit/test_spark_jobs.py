@@ -23,10 +23,7 @@ from pyspark.sql.types import (
 )
 
 # Import the actual functions under test
-from src.spark.batch_transform import (
-    ORDER_SCHEMA,
-    deduplicate_orders,
-)
+from src.spark.batch_transform import ORDER_SCHEMA, deduplicate_orders
 
 # =============================================================================
 # Fixtures
@@ -39,9 +36,7 @@ def spark():
     spark = (
         SparkSession.builder.appName("TestRetailPlatform")
         .master("local[1]")
-        .config(
-            "spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension"
-        )
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
             "spark.sql.catalog.spark_catalog",
             "org.apache.spark.sql.delta.catalog.DeltaCatalog",
@@ -270,9 +265,7 @@ class TestDeduplication:
         result = deduplicate_orders(sample_orders_with_duplicates)
         assert result.count() == 2
 
-    def test_dedup_keeps_latest_by_ingested_at(
-        self, sample_orders_with_duplicates
-    ):
+    def test_dedup_keeps_latest_by_ingested_at(self, sample_orders_with_duplicates):
         """Dedup should keep the record with the most recent ingested_at."""
         result = deduplicate_orders(sample_orders_with_duplicates)
         order_001 = result.filter(col("order_id") == "order-001").collect()[0]
@@ -284,9 +277,7 @@ class TestDeduplication:
         result = deduplicate_orders(sample_parsed_orders)
         assert result.count() == sample_parsed_orders.count()
 
-    def test_dedup_removes_row_number_column(
-        self, sample_orders_with_duplicates
-    ):
+    def test_dedup_removes_row_number_column(self, sample_orders_with_duplicates):
         """The internal _row_num column should not leak into the output."""
         result = deduplicate_orders(sample_orders_with_duplicates)
         assert "_row_num" not in result.columns
@@ -298,9 +289,7 @@ class TestDeduplication:
 
 
 class TestGoldAggregation:
-    def test_aggregation_groups_by_status(
-        self, spark, sample_silver_orders, tmp_path
-    ):
+    def test_aggregation_groups_by_status(self, spark, sample_silver_orders, tmp_path):
         """Aggregation should produce one row per unique status."""
         # Write sample data as Delta so compute_aggregations can read it
         silver_path = str(tmp_path / "silver_orders")
