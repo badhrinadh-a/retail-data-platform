@@ -11,7 +11,6 @@ Tests actual business logic:
 from datetime import datetime
 
 import pytest
-from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 from pyspark.sql.types import (
     DoubleType,
@@ -28,24 +27,6 @@ from src.spark.batch_transform import ORDER_SCHEMA, deduplicate_orders
 # =============================================================================
 # Fixtures
 # =============================================================================
-
-
-@pytest.fixture(scope="session")
-def spark():
-    """Create a test SparkSession with Delta Lake support."""
-    spark = (
-        SparkSession.builder.appName("TestRetailPlatform")
-        .master("local[1]")
-        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-        .config(
-            "spark.sql.catalog.spark_catalog",
-            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-        )
-        .config("spark.sql.shuffle.partitions", "1")
-        .getOrCreate()
-    )
-    yield spark
-    spark.stop()
 
 
 @pytest.fixture

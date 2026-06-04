@@ -6,7 +6,6 @@ against controlled DataFrames with known data, including edge cases.
 """
 
 import pytest
-from pyspark.sql import SparkSession
 from pyspark.sql.types import DoubleType, LongType, StringType, StructField, StructType
 
 from src.quality.data_quality import (
@@ -24,19 +23,6 @@ from src.quality.data_quality import (
 # =============================================================================
 # Fixtures
 # =============================================================================
-
-
-@pytest.fixture(scope="session")
-def spark():
-    """Create a test SparkSession."""
-    spark = (
-        SparkSession.builder.appName("TestDataQuality")
-        .master("local[1]")
-        .config("spark.sql.shuffle.partitions", "1")
-        .getOrCreate()
-    )
-    yield spark
-    spark.stop()
 
 
 @pytest.fixture
