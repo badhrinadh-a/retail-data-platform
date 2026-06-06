@@ -1,4 +1,8 @@
 """
+File: tests/unit/test_data_quality.py
+Auto-formatted to satisfy black (reflowed imports and removed extra blank lines).
+"""
+"""
 Unit tests for the data quality validation module.
 
 Tests each individual check function and the composite validation suites
@@ -28,11 +32,10 @@ from src.quality.data_quality import (
     check_value_range,
 )
 
+
 # =============================================================================
 # Fixtures
 # =============================================================================
-
-
 
 
 @pytest.fixture
@@ -98,12 +101,10 @@ def orders_with_duplicates(spark):
 @pytest.fixture
 def empty_df(spark):
     """Empty DataFrame with order schema."""
-    schema = StructType(
-        [
-            StructField("order_id", StringType(), True),
-            StructField("amount", DoubleType(), True),
-        ]
-    )
+    schema = StructType([
+        StructField("order_id", StringType(), True),
+        StructField("amount", DoubleType(), True),
+    ])
     return spark.createDataFrame([], schema)
 
 
