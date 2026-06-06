@@ -6,7 +6,7 @@ summary: |
   PostgreSQL for metadata, and Jenkins for CI/CD. Implements a medallion architecture
   (bronze/silver/gold) with data quality validation and unit tests.
 tech_stack:
-  - Apache Spark 4.1.2
+  - Apache Spark 4.1.1
   - Delta Lake 4.2.0
   - Apache Kafka 7.4.0
   - Apache Airflow 2.7.1
@@ -61,7 +61,7 @@ services:
       Advertises localhost on 9092 and internal compose network on 29092.
   - name: spark-master
     role: Spark cluster master node
-    image: apache/spark:4.1.2
+    image: apache/spark:4.1.1
     ports: [8080, 7077]
     volumes: [./src:/opt/spark/src, ./data:/opt/spark/data]
     env_file: [.env]
@@ -70,7 +70,7 @@ services:
       Exposes Spark UI on 8080 and master RPC on 7077.
   - name: spark-worker
     role: Spark worker node
-    image: apache/spark:4.1.2
+    image: apache/spark:4.1.1
     ports: [8081]
     depends_on: [spark-master]
     volumes: [./src:/opt/spark/src, ./data:/opt/spark/data]
