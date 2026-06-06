@@ -15,7 +15,6 @@ Quality checks implemented:
     - Referential integrity (cross-table FK checks)
 """
 
-import os
 import sys
 from dataclasses import dataclass, field
 from typing import List, Optional

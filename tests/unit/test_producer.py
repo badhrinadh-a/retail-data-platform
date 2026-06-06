@@ -8,9 +8,6 @@ generated entities (customers, orders, inventory, payments).
 import time
 import uuid
 
-import time
-import uuid
-
 from src.kafka.producer import (
     TOPICS,
     generate_customer,
