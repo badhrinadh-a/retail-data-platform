@@ -4,7 +4,7 @@ pipeline {
     environment {
         // Fallbacks for local testing without Jenkins credentials setup
         DOCKER_CREDS = 'dummy-docker-creds'
-        IMAGE_NAME = 'retail-data-platform:test'
+        IMAGE_NAME = 'retail-data-platform-test'
         MINIO_ACCESS_KEY = 'minioadmin'
         MINIO_SECRET_KEY = 'minioadmin'
     }
