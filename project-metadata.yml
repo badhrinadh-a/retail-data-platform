@@ -7,7 +7,7 @@ summary: |
   (bronze/silver/gold) with data quality validation and unit tests.
 tech_stack:
   - Apache Spark 4.1.2
-  - Delta Lake 2.4.0
+  - Delta Lake 4.2.0
   - Apache Kafka 7.4.0
   - Apache Airflow 2.7.1
   - MinIO

@@ -17,7 +17,7 @@ def get_spark_session(app_name="RetailDataPlatform"):
     minio_secret_key = os.getenv("MINIO_ROOT_PASSWORD", "minioadmin")
 
     packages = [
-        "io.delta:delta-core_2.12:2.4.0",
+        "io.delta:delta-core_2.12:4.2.0",
         "org.apache.hadoop:hadoop-aws:3.3.4",
         "com.amazonaws:aws-java-sdk-bundle:1.12.262",
         "org.apache.spark:spark-sql-kafka-0-10_2.12:4.1.2",
