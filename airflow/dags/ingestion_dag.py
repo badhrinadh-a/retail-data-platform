@@ -30,7 +30,7 @@ with DAG(
         export PYTHONPATH=/opt/airflow && \
         spark-submit \
             --master spark://spark-master:7077 \
-            --packages io.delta:delta-core_2.12:2.4.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1 \
+            --packages io.delta:delta-core_2.12:2.4.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.spark:spark-sql-kafka-0-10_2.12:4.1.2 \
             /opt/airflow/src/spark/streaming_ingestion.py
         '''
     )

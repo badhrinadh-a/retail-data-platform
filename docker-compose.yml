@@ -100,7 +100,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   spark-master:
-    image: apache/spark:3.4.1
+    image: apache/spark:4.1.2
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
     env_file:
       - .env
@@ -118,7 +118,7 @@ services:
       - ./data:/opt/spark/data
 
   spark-worker:
-    image: apache/spark:3.4.1
+    image: apache/spark:4.1.2
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     env_file:
       - .env
