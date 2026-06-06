@@ -5,22 +5,23 @@ Tests schema correctness, value ranges, and type contracts for all
 generated entities (customers, orders, inventory, payments).
 """
 
-import pytest
-import uuid
 import time
+import uuid
+
+import pytest
 
 from src.kafka.producer import (
-    generate_customer,
-    generate_order,
-    generate_inventory,
-    generate_payment,
     TOPICS,
+    generate_customer,
+    generate_inventory,
+    generate_order,
+    generate_payment,
 )
-
 
 # =============================================================================
 # Test: Customer Generation
 # =============================================================================
+
 
 class TestGenerateCustomer:
     def test_customer_has_required_fields(self):
@@ -57,6 +58,7 @@ class TestGenerateCustomer:
 # =============================================================================
 # Test: Order Generation
 # =============================================================================
+
 
 class TestGenerateOrder:
     def test_order_has_required_fields(self):
@@ -108,6 +110,7 @@ class TestGenerateOrder:
 # Test: Inventory Generation
 # =============================================================================
 
+
 class TestGenerateInventory:
     def test_inventory_has_required_fields(self):
         """Inventory record must contain all expected keys."""
@@ -143,6 +146,7 @@ class TestGenerateInventory:
 # =============================================================================
 # Test: Payment Generation
 # =============================================================================
+
 
 class TestGeneratePayment:
     def test_payment_has_required_fields(self):
@@ -180,6 +184,7 @@ class TestGeneratePayment:
 # =============================================================================
 # Test: Topic Configuration
 # =============================================================================
+
 
 class TestTopicConfig:
     def test_all_topics_defined(self):

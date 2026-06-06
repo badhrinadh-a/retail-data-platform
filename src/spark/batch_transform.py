@@ -9,26 +9,29 @@ This replaces the previous mode("overwrite") approach which could destroy
 existing data on partial failures.
 """
 
-import sys
 import logging
-from pyspark.sql.functions import from_json, col, row_number
-from pyspark.sql.types import StructType, StringType, DoubleType, LongType
-from pyspark.sql.window import Window
-from delta.tables import DeltaTable
+import sys
 
-from src.shared.spark_session import get_spark_session
+from delta.tables import DeltaTable
+from pyspark.sql.functions import col, from_json, row_number
+from pyspark.sql.types import DoubleType, LongType, StringType, StructType
+from pyspark.sql.window import Window
+
 from src.shared.logging_config import get_logger
+from src.shared.spark_session import get_spark_session
 
 logger = get_logger(__name__)
 
 
 # Reusable schema definition for order events
-ORDER_SCHEMA = StructType() \
-    .add("order_id", StringType()) \
-    .add("customer_id", StringType()) \
-    .add("amount", DoubleType()) \
-    .add("status", StringType()) \
+ORDER_SCHEMA = (
+    StructType()
+    .add("order_id", StringType())
+    .add("customer_id", StringType())
+    .add("amount", DoubleType())
+    .add("status", StringType())
     .add("created_at", LongType())
+)
 
 SILVER_ORDERS_PATH = "s3a://silver/orders"
 
@@ -43,8 +46,7 @@ def parse_bronze_orders(spark):
     )
 
     parsed_orders = (
-        bronze_df
-        .withColumn("data", from_json(col("value"), ORDER_SCHEMA))
+        bronze_df.withColumn("data", from_json(col("value"), ORDER_SCHEMA))
         .select("data.*", col("timestamp").alias("ingested_at"))
         .filter(col("order_id").isNotNull())  # Drop malformed records
     )
@@ -62,8 +64,7 @@ def deduplicate_orders(parsed_orders):
     dedup_window = Window.partitionBy("order_id").orderBy(col("ingested_at").desc())
 
     clean_orders = (
-        parsed_orders
-        .withColumn("_row_num", row_number().over(dedup_window))
+        parsed_orders.withColumn("_row_num", row_number().over(dedup_window))
         .filter(col("_row_num") == 1)
         .drop("_row_num")
     )
@@ -90,10 +91,7 @@ def upsert_to_silver(spark, clean_orders):
 
         (
             silver_table.alias("target")
-            .merge(
-                clean_orders.alias("source"),
-                "target.order_id = source.order_id"
-            )
+            .merge(clean_orders.alias("source"), "target.order_id = source.order_id")
             .whenMatchedUpdateAll()
             .whenNotMatchedInsertAll()
             .execute()
@@ -102,8 +100,7 @@ def upsert_to_silver(spark, clean_orders):
     else:
         logger.info("Silver table does not exist — creating with initial write")
         (
-            clean_orders.write
-            .format("delta")
+            clean_orders.write.format("delta")
             .mode("overwrite")  # Safe here: first write only, table doesn't exist
             .save(SILVER_ORDERS_PATH)
         )

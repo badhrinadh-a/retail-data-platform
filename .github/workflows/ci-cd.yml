@@ -1,0 +1,162 @@
+name: Retail Data Platform CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+# Enforce the principle of least privilege for github security
+permissions:
+  contents: read
+
+jobs:
+  lint-format:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: Install Linting & Formatting Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install black==23.7.0 isort==5.12.0 flake8==6.1.0
+
+      - name: Check Formatting with Black
+        run: black --check src/ tests/
+
+      - name: Check Import Order with Isort
+        run: isort --check-only src/ tests/
+
+      - name: Run Flake8 Linter
+        run: flake8 src/ tests/
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 11 (Required for PySpark)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Unit Tests with Pytest
+        run: pytest tests/unit/
+
+  build-and-smoke-test:
+    name: Build & Smoke Test
+    runs-on: ubuntu-latest
+    needs: [lint-format, unit-tests]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (for multi-platform compatibility checks)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: github.ref == 'refs/heads/main' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.airflow
+          # Only push to Docker Hub on push to main branch and when credentials are set
+          push: ${{ github.ref == 'refs/heads/main' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+          tags: |
+            ${{ secrets.DOCKER_USERNAME || 'myorg' }}/retail-data-platform-airflow:latest
+            ${{ secrets.DOCKER_USERNAME || 'myorg' }}/retail-data-platform-airflow:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Setup Environment File
+        run: |
+          cat <<EOF > .env
+          POSTGRES_USER=airflow
+          POSTGRES_PASSWORD=airflow
+          POSTGRES_DB=airflow
+          MINIO_ROOT_USER=minioadmin
+          MINIO_ROOT_PASSWORD=minioadmin
+          MINIO_ENDPOINT=http://minio:9000
+          MINIO_ENDPOINT_EXTERNAL=http://localhost:9000
+          AIRFLOW__CORE__EXECUTOR=LocalExecutor
+          AIRFLOW__CORE__FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNpKFCRPk0XQNYiWkZkPE=
+          AIRFLOW__API__SECRET_KEY=my-super-secret-airflow-key-change-me
+          AIRFLOW__CORE__LOAD_EXAMPLES=False
+          AIRFLOW__CORE__LOGGING_LEVEL=INFO
+          AIRFLOW__WEBSERVER__WORKERS=2
+          AIRFLOW__WEBSERVER__WEB_SERVER_MASTER_TIMEOUT=300
+          AIRFLOW_WWW_USER_USERNAME=admin
+          AIRFLOW_WWW_USER_PASSWORD=admin
+          KAFKA_BROKER_INTERNAL=kafka:29092
+          KAFKA_BROKER_EXTERNAL=localhost:9092
+          IMAGE_NAME=${{ secrets.DOCKER_USERNAME || 'myorg' }}/retail-data-platform-airflow
+          EOF
+
+      - name: Spin up Stack using Docker Compose
+        run: docker compose up -d --build
+
+      - name: Wait for Services and Run Smoke Tests
+        run: |
+          echo "Waiting for services to become healthy..."
+          HEALTHY=false
+          # Wait up to 5 minutes (30 iterations * 10 seconds)
+          for i in {1..30}; do
+            # Query local endpoints directly on 127.0.0.1 / localhost - TODO(security): Keep checks bound to localhost
+            AIRFLOW_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8085/health || echo "000")
+            MINIO_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9000/minio/health/live || echo "000")
+            
+            echo "Iteration $i: Airflow: $AIRFLOW_STATUS | MinIO: $MINIO_STATUS"
+            
+            if [ "$AIRFLOW_STATUS" = "200" ] && [ "$MINIO_STATUS" = "200" ]; then
+              echo "Smoke tests passed. Services are healthy and online!"
+              HEALTHY=true
+              break
+            fi
+            sleep 10
+          done
+          
+          if [ "$HEALTHY" = false ]; then
+            echo "ERROR: Services failed health checks."
+            echo "=== Container Status ==="
+            docker compose ps
+            echo "=== Airflow Webserver Logs ==="
+            docker compose logs airflow-webserver
+            echo "=== MinIO Logs ==="
+            docker compose logs minio
+            exit 1
+          fi
+
+      - name: Clean up Resources
+        if: always()
+        run: docker compose down -v

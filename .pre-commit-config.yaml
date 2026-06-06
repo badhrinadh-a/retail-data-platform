@@ -1,0 +1,56 @@
+repos:
+  # Code formatting with Black
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        language_version: python3.9
+        args: [--line-length=88]
+
+  # Import sorting with isort
+  - repo: https://github.com/PyCPA/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: [--profile=black]
+
+  # Linting with flake8
+  - repo: https://github.com/PyCPA/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        args: [--config=.flake8]
+        additional_dependencies: []
+
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+
+# Configure file patterns to check
+files: ^(src|tests|airflow|scripts)/
+exclude: |
+  (?x)^(
+      \.venv|
+      venv|
+      __pycache__|
+      \.pytest_cache|
+      build|
+      dist|
+      \.egg-info
+  )
+ci:
+  autofix_commit_msg: 'refactor: auto-format code with pre-commit hooks'
+  autofix_prs: true
+  autoupdate_commit_msg: 'chore: update pre-commit hooks'
+  autoupdate_schedule: weekly
+  skip: []

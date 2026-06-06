@@ -1,0 +1,14 @@
+[flake8]
+max-line-length = 88
+# E203, W503: Black compatibility ignores
+# E501: Let Black handle line length. Anything Black doesn't wrap (e.g., long strings) is ignored.
+# F401, F811: Ignore unused/redefined imports present in the starter codebase templates.
+extend-ignore = E203, W503, E501, F401, F811
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    .pytest_cache,
+    build,
+    dist

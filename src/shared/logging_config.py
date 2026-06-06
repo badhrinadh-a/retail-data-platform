@@ -11,10 +11,10 @@ Usage:
     logger.info("Processing batch", extra={"records": 1500, "layer": "silver"})
 """
 
-import logging
 import json
-import sys
+import logging
 import os
+import sys
 from datetime import datetime, timezone
 
 
@@ -34,10 +34,27 @@ class StructuredJsonFormatter(logging.Formatter):
 
         # Include any extra fields passed via logger.info(..., extra={...})
         reserved_attrs = {
-            "name", "msg", "args", "created", "filename", "funcName",
-            "levelname", "levelno", "lineno", "module", "msecs", "pathname",
-            "process", "processName", "relativeCreated", "stack_info",
-            "thread", "threadName", "exc_info", "exc_text", "message",
+            "name",
+            "msg",
+            "args",
+            "created",
+            "filename",
+            "funcName",
+            "levelname",
+            "levelno",
+            "lineno",
+            "module",
+            "msecs",
+            "pathname",
+            "process",
+            "processName",
+            "relativeCreated",
+            "stack_info",
+            "thread",
+            "threadName",
+            "exc_info",
+            "exc_text",
+            "message",
         }
         for key, value in record.__dict__.items():
             if key not in reserved_attrs and not key.startswith("_"):
