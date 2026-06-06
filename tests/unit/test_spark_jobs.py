@@ -11,8 +11,7 @@ Tests actual business logic:
 from datetime import datetime
 
 import pytest
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, current_timestamp, lit
+from pyspark.sql.functions import col
 from pyspark.sql.types import (
     DoubleType,
     LongType,
@@ -22,37 +21,13 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
-from src.spark.batch_aggregate import compute_aggregations
-
 # Import the actual functions under test
-from src.spark.batch_transform import (
-    ORDER_SCHEMA,
-    deduplicate_orders,
-    parse_bronze_orders,
-)
+from src.spark.batch_transform import ORDER_SCHEMA, deduplicate_orders
 
 # =============================================================================
 # Fixtures
 # =============================================================================
 
-
-@pytest.fixture(scope="session")
-def spark():
-    """Create a test SparkSession with Delta Lake support."""
-    spark = (
-        SparkSession.builder.appName("TestRetailPlatform")
-        .master("local[1]")
-        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-        .config(
-            "spark.sql.catalog.spark_catalog",
-            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-        )
-        .config("spark.jars.packages", "io.delta:delta-core_2.12:2.4.0")
-        .config("spark.sql.shuffle.partitions", "1")
-        .getOrCreate()
-    )
-    yield spark
-    spark.stop()
 
 
 @pytest.fixture
@@ -167,11 +142,46 @@ def sample_orders_with_duplicates(spark):
 def sample_silver_orders(spark):
     """Sample Silver orders for aggregation testing."""
     data = [
-        ("order-001", "cust-A", 100.0, "COMPLETED", 1700000001, datetime(2024, 1, 1)),
-        ("order-002", "cust-B", 200.0, "COMPLETED", 1700000002, datetime(2024, 1, 1)),
-        ("order-003", "cust-C", 50.0, "PENDING", 1700000003, datetime(2024, 1, 1)),
-        ("order-004", "cust-D", 75.0, "CANCELLED", 1700000004, datetime(2024, 1, 1)),
-        ("order-005", "cust-E", 300.0, "COMPLETED", 1700000005, datetime(2024, 1, 1)),
+        (
+            "order-001",
+            "cust-A",
+            100.0,
+            "COMPLETED",
+            1700000001,
+            datetime(2024, 1, 1),
+        ),
+        (
+            "order-002",
+            "cust-B",
+            200.0,
+            "COMPLETED",
+            1700000002,
+            datetime(2024, 1, 1),
+        ),
+        (
+            "order-003",
+            "cust-C",
+            50.0,
+            "PENDING",
+            1700000003,
+            datetime(2024, 1, 1),
+        ),
+        (
+            "order-004",
+            "cust-D",
+            75.0,
+            "CANCELLED",
+            1700000004,
+            datetime(2024, 1, 1),
+        ),
+        (
+            "order-005",
+            "cust-E",
+            300.0,
+            "COMPLETED",
+            1700000005,
+            datetime(2024, 1, 1),
+        ),
     ]
     schema = StructType(
         [
@@ -195,7 +205,7 @@ class TestSparkSession:
     def test_spark_session_creation(self, spark):
         """Verify test Spark session is running."""
         assert spark is not None
-        assert spark.version.startswith("3.")
+        assert spark.version.startswith("4.")
 
     def test_delta_extension_loaded(self, spark):
         """Verify Delta Lake extension is configured."""
@@ -296,7 +306,7 @@ class TestGoldAggregation:
 
     def test_aggregation_revenue_sum(self, spark, sample_silver_orders):
         """Total revenue for COMPLETED orders should be 600.0 (100+200+300)."""
-        from pyspark.sql.functions import count, current_timestamp
+        from pyspark.sql.functions import count
         from pyspark.sql.functions import sum as _sum
 
         result = sample_silver_orders.groupBy("status").agg(
@@ -359,7 +369,14 @@ class TestEdgeCases:
     def test_single_row_dedup(self, spark):
         """Dedup on a single row should return that same row."""
         data = [
-            ("order-X", "cust-X", 99.99, "PENDING", 1700000000, datetime(2024, 1, 1))
+            (
+                "order-X",
+                "cust-X",
+                99.99,
+                "PENDING",
+                1700000000,
+                datetime(2024, 1, 1),
+            )
         ]
         schema = StructType(
             [

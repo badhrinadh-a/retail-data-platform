@@ -1,13 +1,12 @@
-# Data Engineering Platform - Dependencies
-apache-airflow==2.7.1
-confluent-kafka==2.14.0
-pyspark==4.1.1
-delta-spark==4.2.0
+# Jenkins CI: lint, format, and unit tests (no Airflow — keeps image builds fast)
 pytest==7.4.0
 pytest-cov==4.1.0
 flake8==6.1.0
 black==23.7.0
 isort==5.12.0
+confluent-kafka==2.14.0
+pyspark==4.1.1
+delta-spark==4.2.0
 psycopg2-binary==2.9.10
 boto3==1.28.44
 python-dotenv==1.0.0

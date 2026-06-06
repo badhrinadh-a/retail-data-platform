@@ -6,15 +6,7 @@ against controlled DataFrames with known data, including edge cases.
 """
 
 import pytest
-from pyspark.sql import SparkSession
-from pyspark.sql.types import (
-    DoubleType,
-    IntegerType,
-    LongType,
-    StringType,
-    StructField,
-    StructType,
-)
+from pyspark.sql.types import DoubleType, LongType, StringType, StructField, StructType
 
 from src.quality.data_quality import (
     QualityCheckResult,
@@ -31,8 +23,6 @@ from src.quality.data_quality import (
 # =============================================================================
 # Fixtures
 # =============================================================================
-
-
 
 
 @pytest.fixture
@@ -144,7 +134,9 @@ class TestCheckNoNulls:
 
     def test_nulls_detected(self, orders_with_nulls):
         results = check_no_nulls(
-            orders_with_nulls, "orders", ["order_id", "customer_id"]
+            orders_with_nulls,
+            "orders",
+            ["order_id", "customer_id"],
         )
         result_map = {r.check_name: r for r in results}
         assert result_map["orders_order_id_no_nulls"].passed is False
@@ -157,7 +149,11 @@ class TestCheckNoNulls:
         assert "does not exist" in results[0].message
 
     def test_null_percentage_calculated(self, orders_with_nulls):
-        results = check_no_nulls(orders_with_nulls, "orders", ["order_id"])
+        results = check_no_nulls(
+            orders_with_nulls,
+            "orders",
+            ["order_id"],
+        )
         # 1 null out of 3 rows = 33.33%
         assert results[0].metric_value == pytest.approx(33.33, abs=0.1)
 
@@ -217,7 +213,9 @@ class TestCheckExpectedColumns:
 
     def test_missing_columns_fails(self, orders_df):
         result = check_expected_columns(
-            orders_df, "orders", ["order_id", "nonexistent", "also_missing"]
+            orders_df,
+            "orders",
+            ["order_id", "nonexistent", "also_missing"],
         )
         assert result.passed is False
         assert result.metric_value == 2.0  # 2 missing columns
@@ -231,7 +229,10 @@ class TestCheckExpectedColumns:
 class TestCheckAllowedValues:
     def test_valid_values_pass(self, orders_df):
         result = check_allowed_values(
-            orders_df, "orders", "status", ["COMPLETED", "PENDING", "CANCELLED"]
+            orders_df,
+            "orders",
+            "status",
+            ["COMPLETED", "PENDING", "CANCELLED"],
         )
         assert result.passed is True
 

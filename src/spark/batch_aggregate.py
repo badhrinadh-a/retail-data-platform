@@ -9,11 +9,8 @@ This replaces the previous mode("overwrite") approach which could destroy
 existing aggregation data on partial failures.
 """
 
-import logging
-import sys
-
 from delta.tables import DeltaTable
-from pyspark.sql.functions import col, count, current_timestamp
+from pyspark.sql.functions import count, current_timestamp
 from pyspark.sql.functions import sum as _sum
 
 from src.shared.logging_config import get_logger
@@ -32,7 +29,10 @@ def compute_aggregations(spark):
     record_count = silver_orders.count()
     logger.info(
         "Silver orders loaded",
-        extra={"record_count": record_count, "layer": "silver_to_gold"},
+        extra={
+            "record_count": record_count,
+            "layer": "silver_to_gold",
+        },
     )
 
     gold_agg = (

@@ -2,11 +2,14 @@ FROM jenkins/jenkins:lts
 
 USER root
 
-# Install dependencies
+# System deps for Python tooling and native extensions (e.g. psycopg2)
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     python3-venv \
+    libpq-dev \
+    librdkafka-dev \
+    gcc \
     make \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -15,6 +18,10 @@ RUN apt-get update && apt-get install -y \
 RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-24.0.5.tgz | tar zx -C /tmp \
     && mv /tmp/docker/docker /usr/local/bin/ \
     && rm -rf /tmp/docker
+
+# Bake CI Python deps at image build time (no Airflow — faster, reliable Jenkins builds)
+COPY requirements-ci.txt /opt/jenkins-requirements-ci.txt
+RUN python3 -m pip install --no-cache-dir --break-system-packages -r /opt/jenkins-requirements-ci.txt
 
 # Add jenkins to docker group
 RUN groupadd -f docker && usermod -aG docker jenkins

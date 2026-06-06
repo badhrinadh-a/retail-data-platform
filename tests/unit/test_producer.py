@@ -8,7 +8,8 @@ generated entities (customers, orders, inventory, payments).
 import time
 import uuid
 
-import pytest
+import time
+import uuid
 
 from src.kafka.producer import (
     TOPICS,
@@ -27,7 +28,13 @@ class TestGenerateCustomer:
     def test_customer_has_required_fields(self):
         """Customer must contain all expected keys."""
         customer = generate_customer()
-        required_keys = {"customer_id", "name", "email", "address", "created_at"}
+        required_keys = {
+            "customer_id",
+            "name",
+            "email",
+            "address",
+            "created_at",
+        }
         assert required_keys == set(customer.keys())
 
     def test_customer_id_is_valid_uuid(self):
@@ -64,7 +71,13 @@ class TestGenerateOrder:
     def test_order_has_required_fields(self):
         """Order must contain all expected keys."""
         order = generate_order("test-customer-id")
-        required_keys = {"order_id", "customer_id", "amount", "status", "created_at"}
+        required_keys = {
+            "order_id",
+            "customer_id",
+            "amount",
+            "status",
+            "created_at",
+        }
         assert required_keys == set(order.keys())
 
     def test_order_references_correct_customer(self):
@@ -115,7 +128,13 @@ class TestGenerateInventory:
     def test_inventory_has_required_fields(self):
         """Inventory record must contain all expected keys."""
         inventory = generate_inventory()
-        required_keys = {"item_id", "sku", "quantity", "location", "updated_at"}
+        required_keys = {
+            "item_id",
+            "sku",
+            "quantity",
+            "location",
+            "updated_at",
+        }
         assert required_keys == set(inventory.keys())
 
     def test_inventory_item_id_is_valid_uuid(self):
@@ -152,7 +171,13 @@ class TestGeneratePayment:
     def test_payment_has_required_fields(self):
         """Payment must contain all expected keys."""
         payment = generate_payment("test-order-id")
-        required_keys = {"payment_id", "order_id", "method", "status", "processed_at"}
+        required_keys = {
+            "payment_id",
+            "order_id",
+            "method",
+            "status",
+            "processed_at",
+        }
         assert required_keys == set(payment.keys())
 
     def test_payment_references_correct_order(self):
@@ -189,7 +214,12 @@ class TestGeneratePayment:
 class TestTopicConfig:
     def test_all_topics_defined(self):
         """TOPICS dict must contain all four event types."""
-        assert set(TOPICS.keys()) == {"orders", "customers", "inventory", "payments"}
+        assert set(TOPICS.keys()) == {
+            "orders",
+            "customers",
+            "inventory",
+            "payments",
+        }
 
     def test_topic_values_are_strings(self):
         """Topic names must be non-empty strings."""

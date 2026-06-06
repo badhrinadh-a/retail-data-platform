@@ -3,7 +3,10 @@ web services:
 Airflow:  http://localhost:8085
 MinIO:    http://localhost:9000
 Spark:    http://localhost:8080
-Jenkins:  http://localhost:8082
+Jenkins:  http://localhost:8082     admin | 6de3d056c6e94fcf8f224d738aa61bda
+
+
+docker start retail-data-platform-jenkins-1
 ################################################
 
 step 1:

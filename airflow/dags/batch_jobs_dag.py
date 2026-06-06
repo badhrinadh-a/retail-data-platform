@@ -31,7 +31,7 @@ default_args = {
 
 # Shared Spark packages to avoid duplication
 SPARK_PACKAGES = ",".join([
-    "io.delta:delta-core_2.12:2.4.0",
+    "io.delta:delta-core_2.12:4.2.0",
     "org.apache.hadoop:hadoop-aws:3.3.4",
     "com.amazonaws:aws-java-sdk-bundle:1.12.262",
 ])
