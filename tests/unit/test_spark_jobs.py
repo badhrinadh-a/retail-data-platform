@@ -204,7 +204,7 @@ class TestSparkSession:
     def test_spark_session_creation(self, spark):
         """Verify test Spark session is running."""
         assert spark is not None
-        assert spark.version.startswith("3.")
+        assert spark.version.startswith("4.")
 
     def test_delta_extension_loaded(self, spark):
         """Verify Delta Lake extension is configured."""
