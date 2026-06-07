@@ -9,7 +9,7 @@ tech_stack:
   - Apache Spark 4.1.1
   - Delta Lake 4.2.0
   - Apache Kafka 7.4.0
-  - Apache Airflow 2.7.1
+  - Apache Airflow 2.11.2
   - MinIO
   - PostgreSQL 13
   - Jenkins LTS
@@ -151,7 +151,7 @@ build:
   airflow_image: docker/Dockerfile.airflow
   jenkins_image: docker/Dockerfile.jenkins
   notes: |
-    The Airflow image is based on apache/airflow:2.7.1, installs OpenJDK 11 for Spark,
+    The Airflow image is based on apache/airflow:2.11.2, installs OpenJDK 11 for Spark,
     and installs Python requirements from requirements.txt.
     The Jenkins image is based on jenkins/jenkins:lts and adds Python, make, curl, and Docker CLI.
 startup:

@@ -1,5 +1,5 @@
 # Data Engineering Platform - Dependencies
-apache-airflow==2.7.1
+apache-airflow==2.11.2
 confluent-kafka==2.14.0
 pyspark==4.1.1
 delta-spark==4.2.0
