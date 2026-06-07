@@ -86,7 +86,7 @@ pipeline {
                 branch 'main'
             }
             steps {
-                sh 'sleep 120'
+                sh 'sleep 12000'
                 sh 'curl -f http://localhost:8085/health || exit 1'
                 sh 'curl -f http://localhost:9000/minio/health/live || exit 1'
             }
