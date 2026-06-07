@@ -48,7 +48,36 @@ pipeline {
                 branch 'main'
             }
             steps {
-                sh 'docker compose up -d'
+                withCredentials([
+                    string(credentialsId: 'POSTGRES_PASSWORD', variable: 'POSTGRES_PASSWORD'),
+                    string(credentialsId: 'MINIO_ROOT_PASSWORD', variable: 'MINIO_ROOT_PASSWORD'),
+                    string(credentialsId: 'AIRFLOW__CORE__FERNET_KEY', variable: 'AIRFLOW__CORE__FERNET_KEY'),
+                    string(credentialsId: 'AIRFLOW__API__SECRET_KEY', variable: 'AIRFLOW__API__SECRET_KEY'),
+                    string(credentialsId: 'AIRFLOW_WWW_USER_USERNAME', variable: 'AIRFLOW_WWW_USER_USERNAME'),
+                    string(credentialsId: 'AIRFLOW_WWW_USER_PASSWORD', variable: 'AIRFLOW_WWW_USER_PASSWORD')
+                ]) {
+                    sh '''
+                    cat > .env <<EOF
+                    POSTGRES_USER=airflow
+                    POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+                    POSTGRES_DB=airflow
+                    MINIO_ROOT_USER=minioadmin
+                    MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+                    MINIO_ENDPOINT=http://minio:9000
+                    MINIO_ENDPOINT_EXTERNAL=http://localhost:9000
+                    AIRFLOW__CORE__EXECUTOR=LocalExecutor
+                    AIRFLOW__CORE__FERNET_KEY=${AIRFLOW__CORE__FERNET_KEY}
+                    AIRFLOW__API__SECRET_KEY=${AIRFLOW__API__SECRET_KEY}
+                    AIRFLOW__CORE__LOAD_EXAMPLES=False
+                    AIRFLOW__CORE__LOGGING_LEVEL=INFO
+                    AIRFLOW__WEBSERVER__WORKERS=2
+                    AIRFLOW__WEBSERVER__WEB_SERVER_MASTER_TIMEOUT=300
+                    AIRFLOW_WWW_USER_USERNAME=${AIRFLOW_WWW_USER_USERNAME}
+                    AIRFLOW_WWW_USER_PASSWORD=${AIRFLOW_WWW_USER_PASSWORD}
+                    EOF
+                    docker compose --env-file .env up -d
+                    '''
+                }
             }
         }
 
