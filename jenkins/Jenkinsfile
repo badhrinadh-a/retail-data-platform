@@ -57,6 +57,7 @@ pipeline {
                     string(credentialsId: 'AIRFLOW_WWW_USER_PASSWORD', variable: 'AIRFLOW_WWW_USER_PASSWORD')
                 ]) {
                     sh '''
+cd $WORKSPACE
 cat > .env <<EOF
 POSTGRES_USER=airflow
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -86,7 +87,7 @@ docker compose --env-file .env up -d
                 branch 'main'
             }
             steps {
-                sh 'sleep 12000'
+                sh 'sleep 60'
                 sh 'curl -f http://localhost:8085/health || exit 1'
                 sh 'curl -f http://localhost:9000/minio/health/live || exit 1'
             }
